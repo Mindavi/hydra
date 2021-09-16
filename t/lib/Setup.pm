@@ -42,6 +42,8 @@ our @EXPORT = qw(test_init hydra_setup write_file nrBuildsForJobset queuedBuilds
 sub test_init {
     my %opts = @_;
 
+    my %res;
+
     my $dir = File::Temp->newdir();
 
     $ENV{'HYDRA_DATA'} = "$dir/hydra-data";
@@ -56,6 +58,7 @@ sub test_init {
     my $hydra_config = $opts{'hydra_config'} || "";
     if ($opts{'use_external_destination_store'} // 1) {
         $hydra_config = "store_uri = file:$dir/nix/dest-store\n" . $hydra_config;
+        $res{deststoredir} = "$dir/nix/dest-store";
     }
 
     write_file($ENV{'HYDRA_CONFIG'}, $hydra_config);
@@ -71,12 +74,11 @@ sub test_init {
     );
     $ENV{'HYDRA_DBI'} = $pgsql->dsn;
     system("hydra-init") == 0 or die;
-    return (
-        db => $pgsql,
-        tmpdir => $dir,
-        testdir => abs_path(dirname(__FILE__) . "/.."),
-        jobsdir => abs_path(dirname(__FILE__) . "/../jobs")
-    );
+    $res{db} =  $pgsql;
+    $res{tmpdir} =  $dir;
+    $res{testdir} =  abs_path(dirname(__FILE__) . "/..");
+    $res{jobsdir} =  abs_path(dirname(__FILE__) . "/../jobs");
+    return %res;
 }
 
 sub write_file {
