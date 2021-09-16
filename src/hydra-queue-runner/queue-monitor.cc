@@ -508,24 +508,29 @@ Step::ptr State::createStep(ref<Store> destStore,
                   try {
                       time_t startTime = time(0);
 
-                try {
-                    time_t startTime = time(0);
-
-                    if (localStore->isValidPath(*path))
-                        printInfo("copying output ‘%1%’ of ‘%2%’ from local store",
-                            localStore->printStorePath(*path),
-                            localStore->printStorePath(drvPath));
-                    else {
-                        printInfo("substituting output ‘%1%’ of ‘%2%’",
-                            localStore->printStorePath(*path),
-                            localStore->printStorePath(drvPath));
-                        localStore->ensurePath(*path);
+                      if (localStore->isValidPath(*path))
+                          printInfo("copying output ‘%1%’ of ‘%2%’ from local store",
+                              localStore->printStorePath(*path),
+                              localStore->printStorePath(drvPath));
+                      else {
+                          printInfo("substituting output ‘%1%’ of ‘%2%’",
+                              localStore->printStorePath(*path),
+                              localStore->printStorePath(drvPath));
+                          localStore->ensurePath(*path);
                         // FIXME: should copy directly from substituter to destStore.
-                    }
+                      }
+                      StorePathSet closure;
+                      localStore->computeFSClosure({*path}, closure);
+                      copyPaths(ref<Store>(localStore), destStore, closure, NoRepair, CheckSigs, NoSubstitute);
 
                       time_t stopTime = time(0);
 
-                    time_t stopTime = time(0);
+                      {
+                        auto mc = startDbUpdate();
+                        pqxx::work txn(conn);
+                        createSubstitutionStep(txn, startTime, stopTime, build, drvPath, "out", *path);
+                        txn.commit();
+                      }
 
                   } catch (Error & e) {
                       printError("while copying/substituting output ‘%s’ of ‘%s’: %s",
