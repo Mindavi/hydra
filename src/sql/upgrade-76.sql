@@ -1,12 +1,4 @@
--- We don't know if existing checkouts are deep clones.  This will
--- force a new fetch (and most likely trigger a new build for deep
--- clones, as the binary contents of '.git' are not deterministic).
-DELETE FROM CachedGitInputs;
+create index IndexBuildsJobsetIdCurrentUnfinished on Builds(jobset_id) where isCurrent = 1 and finished = 0;
+create index IndexBuildsJobsetIdCurrentFinishedStatus on Builds(jobset_id, buildstatus) where isCurrent = 1 and finished = 1;
+create index IndexBuildsJobsetIdCurrent on Builds(jobset_id) where isCurrent = 1;
 
-ALTER TABLE CachedGitInputs
-    ADD COLUMN isDeepClone BOOLEAN NOT NULL;
-
-ALTER TABLE CachedGitInputs DROP CONSTRAINT cachedgitinputs_pkey;
-
-ALTER TABLE CachedGitInputs ADD CONSTRAINT cachedgitinputs_pkey
-    PRIMARY KEY (uri, branch, revision, isDeepClone);
